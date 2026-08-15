@@ -1,0 +1,1 @@
+print("CODECOPTER backend starting")
