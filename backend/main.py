@@ -55,14 +55,24 @@ def create_database():
 
     if count == 0:
         cursor.execute(
-            "INSERT INTO drones (id, status) VALUES (?, ?)",
-            (1, "available")
+        "INSERT INTO drones (id, status) VALUES (?, ?)",
+        (1, "available")
         )
 
         cursor.execute(
-            "INSERT INTO drones (id, status) VALUES (?, ?)",
-            (2, "delivering")
+        "INSERT INTO drones (id, status) VALUES (?, ?)",
+        (2, "delivering")
         )
+
+    cursor.execute(
+        "INSERT OR IGNORE INTO drones (id, status) VALUES (?, ?)",
+        (3, "available")
+    )
+    
+
+
+
+    
 
     db.commit()
     db.close()
