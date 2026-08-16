@@ -68,7 +68,7 @@ def create_database():
         "INSERT OR IGNORE INTO drones (id, status) VALUES (?, ?)",
         (3, "available")
     )
-    
+
 
 
 
@@ -121,16 +121,37 @@ def get_drones():
 
 # ---------------- DELIVERIES ----------------
 
+
 @app.post("/deliveries")
 def create_delivery(
     medicine: str,
-    destination: str,
-    drone_id: int
+    destination: str
 ):
 
     db = get_db()
     cursor = db.cursor()
 
+    # Find an available drone
+    cursor.execute(
+        "SELECT id FROM drones WHERE status = ? LIMIT 1",
+        ("available",)
+    )
+
+    drone = cursor.fetchone()
+
+    # If no drone is available
+    if drone is None:
+
+        db.close()
+
+        return {
+            "message": "No drones available"
+        }
+
+    # Get the drone ID
+    drone_id = drone[0]
+
+    # Create the delivery
     cursor.execute(
         """
         INSERT INTO deliveries
@@ -145,10 +166,19 @@ def create_delivery(
         )
     )
 
-    db.commit()
-
     delivery_id = cursor.lastrowid
 
+    # Mark the drone as delivering
+    cursor.execute(
+        """
+        UPDATE drones
+        SET status = ?
+        WHERE id = ?
+        """,
+        ("delivering", drone_id)
+    )
+
+    db.commit()
     db.close()
 
     return {
@@ -159,7 +189,6 @@ def create_delivery(
         "drone_id": drone_id,
         "status": "created"
     }
-
 
 # ---------------- VIEW DELIVERIES ----------------
 
