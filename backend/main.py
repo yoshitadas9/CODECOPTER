@@ -123,17 +123,18 @@ def get_drones():
 
 
 @app.post("/deliveries")
-def create_delivery(
-    medicine: str,
-    destination: str
-):
+def create_delivery(medicine: str, destination: str):
 
     db = get_db()
     cursor = db.cursor()
 
-    # Find an available drone
     cursor.execute(
-        "SELECT id FROM drones WHERE status = ? LIMIT 1",
+        """
+        SELECT id
+        FROM drones
+        WHERE status = ?
+        LIMIT 1
+        """,
         ("available",)
     )
 
@@ -141,9 +142,7 @@ def create_delivery(
 
     # If no drone is available
     if drone is None:
-
         db.close()
-
         return {
             "message": "No drones available"
         }
@@ -188,6 +187,30 @@ def create_delivery(
         "destination": destination,
         "drone_id": drone_id,
         "status": "created"
+    }
+
+@app.post("/drones/{drone_id}/reset")
+def reset_drone(drone_id: int):
+
+    db = get_db()
+    cursor = db.cursor()
+
+    cursor.execute(
+        """
+        UPDATE drones
+        SET status = ?
+        WHERE id = ?
+        """,
+        ("available", drone_id)
+    )
+
+    db.commit()
+    db.close()
+
+    return {
+        "message": "Drone is now available",
+        "drone_id": drone_id,
+        "status": "available"
     }
 
 # ---------------- VIEW DELIVERIES ----------------
@@ -237,6 +260,28 @@ def update_delivery(
     db = get_db()
     cursor = db.cursor()
 
+    # Find the drone assigned to this delivery
+    cursor.execute(
+        """
+        SELECT drone_id
+        FROM deliveries
+        WHERE id = ?
+        """,
+        (delivery_id,)
+    )
+
+    delivery = cursor.fetchone()
+
+    if delivery is None:
+        db.close()
+
+        return {
+            "message": "Delivery not found"
+        }
+
+    drone_id = delivery[0]
+
+    # Update delivery status
     cursor.execute(
         """
         UPDATE deliveries
@@ -246,16 +291,27 @@ def update_delivery(
         (status, delivery_id)
     )
 
-    db.commit()
+    # If delivery is completed, make the drone available again
+    if status == "completed":
 
+        cursor.execute(
+            """
+            UPDATE drones
+            SET status = ?
+            WHERE id = ?
+            """,
+            ("available", drone_id)
+        )
+
+    db.commit()
     db.close()
 
     return {
         "message": "Delivery status updated",
         "delivery_id": delivery_id,
+        "drone_id": drone_id,
         "status": status
     }
-
 
 # ---------------- TEMPERATURE ----------------
 
